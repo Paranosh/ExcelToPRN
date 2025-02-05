@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using OfficeOpenXml;
+using ClosedXML.Excel;
 
 class Program
 {
@@ -39,14 +39,12 @@ class Program
 
     static int[] ConvertExcelToPrn(string excelPath, string outputFilePath)
     {
-        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-
-        using (var package = new ExcelPackage(new FileInfo(excelPath)))
+        using (var workbook = new XLWorkbook(excelPath))
         {
-            var worksheet = package.Workbook.Worksheets[0]; // Primera hoja
-
-            int rowCount = worksheet.Dimension.Rows;
-            int colCount = worksheet.Dimension.Columns;
+            var worksheet = workbook.Worksheet(1); // Primera hoja
+            var range = worksheet.RangeUsed();
+            int rowCount = range.RowCount();
+            int colCount = range.ColumnCount();
 
             // Determinar el ancho máximo de cada columna
             int[] columnWidths = new int[colCount];
@@ -57,7 +55,7 @@ class Program
 
                 for (int row = 1; row <= rowCount; row++)
                 {
-                    string cellValue = worksheet.Cells[row, col].Text;
+                    string cellValue = worksheet.Cell(row, col).GetString().Trim();
                     maxLength = Math.Max(maxLength, cellValue.Length);
                 }
 
@@ -70,7 +68,7 @@ class Program
                 {
                     for (int col = 1; col <= colCount; col++)
                     {
-                        string value = worksheet.Cells[row, col].Text;
+                        string value = worksheet.Cell(row, col).GetString().Trim();
                         writer.Write(value.PadRight(columnWidths[col - 1])); // Rellenar con espacios
                     }
                     writer.WriteLine();
@@ -83,20 +81,18 @@ class Program
 
     static void GenerateInfoFile(string excelPath, string infoFilePath, int[] columnWidths)
     {
-        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-
-        using (var package = new ExcelPackage(new FileInfo(excelPath)))
+        using (var workbook = new XLWorkbook(excelPath))
         {
-            var worksheet = package.Workbook.Worksheets[0]; // Primera hoja
+            var worksheet = workbook.Worksheet(1); // Primera hoja
 
             using (var writer = new StreamWriter(infoFilePath))
             {
                 int colCount = columnWidths.Length;
-                int position = 1; // Ahora comienza en 1
+                int position = 1; // Comienza en 1
 
                 for (int col = 1; col <= colCount; col++)
                 {
-                    string value = worksheet.Cells[1, col].Text; // Primera fila (encabezado)
+                    string value = worksheet.Cell(1, col).GetString().Trim(); // Primera fila (encabezado)
                     int length = columnWidths[col - 1]; // Longitud de la columna incluyendo espacios
 
                     writer.WriteLine($"{value}  Inicio: {position}  Longitud: {length}");
